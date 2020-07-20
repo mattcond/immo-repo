@@ -75,16 +75,22 @@ ricerca_modal <- function(lista_regioni, ec = F) {modalDialog(
 
 shinyServer(function(input, output, session){
   ### Modale per nuoova ricerca
-  
-  immo_data <- fread('../data/immo_data_2020-07-16 20:36:25.447691.csv')
-  
+  regioni_attive <- readLines('../data/regioni-attive.txt')
+  immo_data <- fread('../data/immo_data_2020-07-16 20:36:25.447691.csv') %>% 
+    filter(regione %in% regioni_attive)
+
+  mappa_annunci_prx <- leafletProxy('mappa_annunci')
   #variabili per la sessione attuale
   
   session_variable <- reactiveValues('regioni_province_comuni_df'= immo_data %>% select(regione, provincia, comune) %>% distinct,
                                      'lista_regioni' = immo_data %>% pull(regione) %>% unique,
-                                     'area_geografica_selezionata' = list('regione'=NULL,'provincia'=NULL, 'comuni'=NULL))
+                                     'area_geografica_selezionata' = list('regione'=NULL,'provincia'=NULL, 'comuni'=NULL), 
+                                     'annunci_selezionati' = NULL, 
+                                     'affitto' = 0, 
+                                     'reset_ricerca' = T)
   
   isolate({
+    output$mappa_annunci <- renderLeaflet({leaflet()})
     showModal(ricerca_modal(session_variable$lista_regioni))
   })
   
@@ -97,7 +103,8 @@ shinyServer(function(input, output, session){
     lista_province <- session_variable$regioni_province_comuni_df %>% 
       filter(regione == session_variable$area_geografica_selezionata$regione) %>% 
       pull(provincia) %>% 
-      unique
+      unique %>% 
+      sort
     
     updatePickerInput(session, inputId = 'provincia', choices = lista_province)
   })
@@ -109,7 +116,8 @@ shinyServer(function(input, output, session){
     lista_comuni <- session_variable$regioni_province_comuni_df %>% 
       filter(provincia == session_variable$area_geografica_selezionata$provincia) %>% 
       pull(comune) %>% 
-      unique
+      unique %>% 
+      sort
     
     updatePickerInput(session, inputId = 'comuni', choices = lista_comuni)
   })
@@ -117,12 +125,35 @@ shinyServer(function(input, output, session){
   # ----> Aggiorno la session_variable relativa al comune
   
   observeEvent(input$comuni, {
-    session_variable$area_geografica_selezionata$comuni <- input$comuni
+    session_variable$area_geografica_selezionata$comuni <- input$comuni %>% sort
   })
   
   
   observeEvent(input$ricerca, {
-    print(str(session_variable$area_geografica_selezionata))
+    session_variable$affitto <- ifelse(input$affitto_vendita == 'Affitto', 1, 0) 
+    
+    print(session_variable$affitto)
+    print(input$affitto_vendita)
+    
+    session_variable$annunci_selezionati <- immo_data %>%
+      filter(regione == session_variable$area_geografica_selezionata$regione, 
+             provincia == session_variable$area_geografica_selezionata$provincia, 
+             comune %in% session_variable$area_geografica_selezionata$comuni, 
+             affitto == session_variable$affitto)
+    
+    mean_lat <- session_variable$annunci_selezionati$latitudine %>% mean
+    mean_lng <- session_variable$annunci_selezionati$longitudine %>% mean
+    
+    mappa_annunci_prx %>%
+      clearMarkers() %>%
+      addTiles() %>%
+      setView(lat = mean_lat, lng = mean_lng, zoom = 8) %>% 
+      addCircleMarkers(data = session_variable$annunci_selezionati, 
+                  lat = ~latitudine, 
+                 lng = ~longitudine)
+    
+    
+    
     removeModal()
   })
   
@@ -130,6 +161,14 @@ shinyServer(function(input, output, session){
   
   
   observeEvent(input$nuova_ricerca, {
+    
+    updatePickerInput(session, 'regione', selected = session_variable$area_geografica_selezionata$regione)
+    updatePickerInput(session, 'provincia', selected = session_variable$area_geografica_selezionata$provincia)
+    updatePickerInput(session, 'comuni', selected = session_variable$area_geografica_selezionata$comuni)
+    
+    updateRadioGroupButtons(session, 'affitto_vendita', 
+                            selected = ifelse(session_variable$affitto == 1, 'Affitto', 'Vendita'))
+    
     showModal(ricerca_modal(session_variable$lista_regioni, T))
   })
   

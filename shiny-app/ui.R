@@ -2,6 +2,8 @@ library(shiny)
 library(shinyWidgets)
 library(data.table)
 library(dplyr)
+library(leaflet)
+library(leaflet.extras)
 shinyUI(fluidPage(
   titlePanel("Immobiliare HDE"),
   
@@ -11,6 +13,9 @@ shinyUI(fluidPage(
                  ,hr()
                  #,sliderInput('prezzo', 'Prezzo', 0, )
                  ),
-    mainPanel("main panel")
+    mainPanel(
+      h3('Distribuzione territoriale degli immobili'),
+      leafletOutput('mappa_annunci')
+    )
   )
 ))
