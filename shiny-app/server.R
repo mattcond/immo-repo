@@ -1,4 +1,4 @@
-ricerca_modal <- function(ec = F) {modalDialog(
+ricerca_modal <- function(lista_regioni, ec = F) {modalDialog(
   title = NULL, #'Esegui una ricerca', 
   footer = NULL, easyClose = ec,
   fluidPage(
@@ -9,7 +9,7 @@ ricerca_modal <- function(ec = F) {modalDialog(
              ,pickerInput(
                inputId = "regione",
                label = NULL, 
-               choices = c('aa', 'aaaa', 'aaaaaa'),
+               choices = lista_regioni,
                options = list(
                  'live-search' = TRUE, 
                  'title' = "Regione")
@@ -27,7 +27,7 @@ ricerca_modal <- function(ec = F) {modalDialog(
       ),
       column(width = 4
              ,pickerInput(
-               inputId = "comune",
+               inputId = "comuni",
                label = NULL, 
                choices = c('aa', 'aaaa', 'aaaaaa'),
                options = list(
@@ -76,22 +76,64 @@ ricerca_modal <- function(ec = F) {modalDialog(
 shinyServer(function(input, output, session){
   ### Modale per nuoova ricerca
   
-  #immo_data <- fread('../data/immo_data_2020-07-16 20:36:25.447691.csv')
+  immo_data <- fread('../data/immo_data_2020-07-16 20:36:25.447691.csv')
   
-  #session_variable
+  #variabili per la sessione attuale
   
+  session_variable <- reactiveValues('regioni_province_comuni_df'= immo_data %>% select(regione, provincia, comune) %>% distinct,
+                                     'lista_regioni' = immo_data %>% pull(regione) %>% unique,
+                                     'area_geografica_selezionata' = list('regione'=NULL,'provincia'=NULL, 'comuni'=NULL))
   
   isolate({
-    showModal(ricerca_modal())
+    showModal(ricerca_modal(session_variable$lista_regioni))
   })
   
-  observeEvent(input$nuova_ricerca, {
-    showModal(ricerca_modal(T))
+  ### gestione del modale
+  
+  # ---> Update del campo provincia
+  
+  observeEvent(input$regione, {
+    session_variable$area_geografica_selezionata$regione <- input$regione
+    lista_province <- session_variable$regioni_province_comuni_df %>% 
+      filter(regione == session_variable$area_geografica_selezionata$regione) %>% 
+      pull(provincia) %>% 
+      unique
+    
+    updatePickerInput(session, inputId = 'provincia', choices = lista_province)
   })
+  
+  # ---> Update del campo comune
+  
+  observeEvent(input$provincia, {
+    session_variable$area_geografica_selezionata$provincia <- input$provincia
+    lista_comuni <- session_variable$regioni_province_comuni_df %>% 
+      filter(provincia == session_variable$area_geografica_selezionata$provincia) %>% 
+      pull(comune) %>% 
+      unique
+    
+    updatePickerInput(session, inputId = 'comuni', choices = lista_comuni)
+  })
+  
+  # ----> Aggiorno la session_variable relativa al comune
+  
+  observeEvent(input$comuni, {
+    session_variable$area_geografica_selezionata$comuni <- input$comuni
+  })
+  
   
   observeEvent(input$ricerca, {
+    print(str(session_variable$area_geografica_selezionata))
     removeModal()
   })
+  
+  
+  
+  
+  observeEvent(input$nuova_ricerca, {
+    showModal(ricerca_modal(session_variable$lista_regioni, T))
+  })
+  
+  
   
   
   
