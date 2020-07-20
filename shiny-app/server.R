@@ -76,7 +76,7 @@ ricerca_modal <- function(ec = F) {modalDialog(
 shinyServer(function(input, output, session){
   ### Modale per nuoova ricerca
   
-  immo_data <- fread('../data/immo_data_2020-07-16 20:36:25.447691.csv')
+  #immo_data <- fread('../data/immo_data_2020-07-16 20:36:25.447691.csv')
   
   #session_variable
   

@@ -1,7 +1,7 @@
 library(shiny)
 library(shinyWidgets)
-library(data.table)
-library(dplyr)
+#library(data.table)
+#library(dplyr)
 shinyUI(fluidPage(
   titlePanel("Immobiliare HDE"),
   
