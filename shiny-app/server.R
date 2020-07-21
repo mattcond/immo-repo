@@ -85,6 +85,7 @@ shinyServer(function(input, output, session){
   session_variable <- reactiveValues('regioni_province_comuni_df'= immo_data %>% select(regione, provincia, comune) %>% distinct,
                                      'lista_regioni' = immo_data %>% pull(regione) %>% unique,
                                      'area_geografica_selezionata' = list('regione'=NULL,'provincia'=NULL, 'comuni'=NULL), 
+                                     'lista_comuni' = NULL,
                                      'annunci_selezionati' = NULL, 
                                      'affitto' = 0, 
                                      'reset_ricerca' = T)
@@ -105,7 +106,7 @@ shinyServer(function(input, output, session){
       pull(provincia) %>% 
       unique %>% 
       sort
-    
+
     updatePickerInput(session, inputId = 'provincia', choices = lista_province)
   })
   
@@ -113,13 +114,13 @@ shinyServer(function(input, output, session){
   
   observeEvent(input$provincia, {
     session_variable$area_geografica_selezionata$provincia <- input$provincia
-    lista_comuni <- session_variable$regioni_province_comuni_df %>% 
+    session_variable$lista_comuni <- session_variable$regioni_province_comuni_df %>% 
       filter(provincia == session_variable$area_geografica_selezionata$provincia) %>% 
       pull(comune) %>% 
       unique %>% 
       sort
     
-    updatePickerInput(session, inputId = 'comuni', choices = lista_comuni)
+    updatePickerInput(session, inputId = 'comuni', choices = session_variable$lista_comuni)
   })
   
   # ----> Aggiorno la session_variable relativa al comune
@@ -128,7 +129,7 @@ shinyServer(function(input, output, session){
     session_variable$area_geografica_selezionata$comuni <- input$comuni %>% sort
   })
   
-  
+  # ----> Click sul tasto di ricerca
   observeEvent(input$ricerca, {
     session_variable$affitto <- ifelse(input$affitto_vendita == 'Affitto', 1, 0) 
     
@@ -138,8 +139,12 @@ shinyServer(function(input, output, session){
     session_variable$annunci_selezionati <- immo_data %>%
       filter(regione == session_variable$area_geografica_selezionata$regione, 
              provincia == session_variable$area_geografica_selezionata$provincia, 
-             comune %in% session_variable$area_geografica_selezionata$comuni, 
-             affitto == session_variable$affitto)
+             comune %in% session_variable$area_geografica_selezionata$comuni)
+    
+    updateSelectInput(session, 
+                         'selezione_singola_comune', 
+                         choices = session_variable$lista_comuni,
+                         selected = session_variable$area_geografica_selezionata$comuni)
     
     mean_lat <- session_variable$annunci_selezionati$latitudine %>% mean
     mean_lng <- session_variable$annunci_selezionati$longitudine %>% mean
@@ -148,16 +153,65 @@ shinyServer(function(input, output, session){
       clearMarkers() %>%
       addTiles() %>%
       setView(lat = mean_lat, lng = mean_lng, zoom = 8) %>% 
-      addCircleMarkers(data = session_variable$annunci_selezionati, 
+      addCircleMarkers(data = session_variable$annunci_selezionati %>% filter(affitto == session_variable$affitto), 
                   lat = ~latitudine, 
                  lng = ~longitudine)
-    
-    
     
     removeModal()
   })
   
+  # ----> aggiunta o rimozione di uno o più comuni
   
+  observeEvent(input$selezione_singola_comune, {
+    cat('session_variable: ',session_variable$area_geografica_selezionata$comuni, '\n')
+    
+    cat('select_input:', input$selezione_singola_comune, '\n')
+    
+    comune_diff <- setdiff(input$selezione_singola_comune, session_variable$area_geografica_selezionata$comuni)
+    
+    if(length(comune_diff) > 0){
+      cat('nuovo comune\n')
+      session_variable$area_geografica_selezionata$comuni <- c(session_variable$area_geografica_selezionata$comuni, comune_diff)
+    } else {
+      cat('rimosso un comune\n')
+      to_remove <- setdiff(session_variable$area_geografica_selezionata$comuni, input$selezione_singola_comune)
+      session_variable$area_geografica_selezionata$comuni <- input$selezione_singola_comune
+    }
+    
+    
+    
+    session_variable$annunci_selezionati <- immo_data %>%
+      filter(regione == session_variable$area_geografica_selezionata$regione, 
+             provincia == session_variable$area_geografica_selezionata$provincia, 
+             comune %in% session_variable$area_geografica_selezionata$comuni)
+    
+    mean_lat <- session_variable$annunci_selezionati$latitudine %>% mean
+    mean_lng <- session_variable$annunci_selezionati$longitudine %>% mean
+    
+    if(length(comune_diff) > 0){
+      cat('nuovo comune\n')
+      mappa_annunci_prx %>%
+        addTiles() %>%
+        setView(lat = mean_lat, lng = mean_lng, zoom = 8) %>% 
+        addCircleMarkers(data = session_variable$annunci_selezionati %>% 
+                           filter(comune == comune_diff, 
+                                  affitto == session_variable$affitto), 
+                         lat = ~latitudine, 
+                         lng = ~longitudine, 
+                         group = comune_diff)
+    } else {
+      cat('rimosso un comune\n')
+      mappa_annunci_prx %>%
+        removeMarker(layerId = to_remove)
+    }
+    
+    # updateSelectInput(session, 
+    #                   'selezione_singola_comune', 
+    #                   choices = session_variable$lista_comuni,
+    #                   selected = session_variable$area_geografica_selezionata$comuni)
+    # 
+    
+  })
   
   
   observeEvent(input$nuova_ricerca, {
