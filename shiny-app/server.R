@@ -155,7 +155,10 @@ shinyServer(function(input, output, session){
       setView(lat = mean_lat, lng = mean_lng, zoom = 8) %>% 
       addCircleMarkers(data = session_variable$annunci_selezionati %>% filter(affitto == session_variable$affitto), 
                   lat = ~latitudine, 
-                 lng = ~longitudine)
+                 lng = ~longitudine, 
+                 group = ~comune,
+                 radius = 5, 
+                 stroke = F)
     
     removeModal()
   })
@@ -163,22 +166,28 @@ shinyServer(function(input, output, session){
   # ----> aggiunta o rimozione di uno o più comuni
   
   observeEvent(input$selezione_singola_comune, {
-    cat('session_variable: ',session_variable$area_geografica_selezionata$comuni, '\n')
+    
+    cat("===== MODIFICA COMUNE =====\n")
+    
+    cat('session_variable pre: ',session_variable$area_geografica_selezionata$comuni, '\n')
     
     cat('select_input:', input$selezione_singola_comune, '\n')
     
     comune_diff <- setdiff(input$selezione_singola_comune, session_variable$area_geografica_selezionata$comuni)
+    to_remove <- setdiff(session_variable$area_geografica_selezionata$comuni, input$selezione_singola_comune)
+    session_variable$area_geografica_selezionata$comuni <- input$selezione_singola_comune
     
-    if(length(comune_diff) > 0){
-      cat('nuovo comune\n')
-      session_variable$area_geografica_selezionata$comuni <- c(session_variable$area_geografica_selezionata$comuni, comune_diff)
-    } else {
-      cat('rimosso un comune\n')
-      to_remove <- setdiff(session_variable$area_geografica_selezionata$comuni, input$selezione_singola_comune)
-      session_variable$area_geografica_selezionata$comuni <- input$selezione_singola_comune
-    }
+    # 
+    # if(length(comune_diff) > 0){
+    #   cat('nuovo comune:', comune_diff, '\n')
+    #   session_variable$area_geografica_selezionata$comuni <- c(session_variable$area_geografica_selezionata$comuni, comune_diff)
+    # } else {
+    #   to_remove <- setdiff(session_variable$area_geografica_selezionata$comuni, input$selezione_singola_comune)
+    #   cat('rimosso un comune:', to_remove, '\n')
+    #   session_variable$area_geografica_selezionata$comuni <- input$selezione_singola_comune
+    # }
     
-    
+    cat('session_variable post: ',session_variable$area_geografica_selezionata$comuni, '\n')
     
     session_variable$annunci_selezionati <- immo_data %>%
       filter(regione == session_variable$area_geografica_selezionata$regione, 
@@ -189,27 +198,25 @@ shinyServer(function(input, output, session){
     mean_lng <- session_variable$annunci_selezionati$longitudine %>% mean
     
     if(length(comune_diff) > 0){
-      cat('nuovo comune\n')
+      cat('nuovo comune:', comune_diff, '\n')
       mappa_annunci_prx %>%
         addTiles() %>%
-        setView(lat = mean_lat, lng = mean_lng, zoom = 8) %>% 
+        setView(lat = mean_lat, lng = mean_lng, zoom = 10) %>% 
         addCircleMarkers(data = session_variable$annunci_selezionati %>% 
                            filter(comune == comune_diff, 
                                   affitto == session_variable$affitto), 
                          lat = ~latitudine, 
                          lng = ~longitudine, 
-                         group = comune_diff)
-    } else {
-      cat('rimosso un comune\n')
-      mappa_annunci_prx %>%
-        removeMarker(layerId = to_remove)
-    }
+                         group = ~comune, 
+                         radius = 5, 
+                         stroke = F)
+    } 
     
-    # updateSelectInput(session, 
-    #                   'selezione_singola_comune', 
-    #                   choices = session_variable$lista_comuni,
-    #                   selected = session_variable$area_geografica_selezionata$comuni)
-    # 
+    if(length(to_remove)>0){
+      cat('rimosso un comune:', to_remove, '\n')
+      mappa_annunci_prx %>%
+        clearGroup(group = to_remove) 
+    }
     
   })
   

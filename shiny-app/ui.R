@@ -12,7 +12,10 @@ shinyUI(fluidPage(
                  ,actionButton('nuova_ricerca', 'Nuova ricerca', icon('search'), width = '100%')
                  ,hr()
                  ,h4('Aggiungi un comune')
-                 ,selectInput('selezione_singola_comune', label = NULL, choices = c('Nessuna selezione'), selectize = T,multiple = T)
+                 ,selectInput('selezione_singola_comune', 
+                              label = NULL, choices = c('Nessuna selezione'), 
+                              selectize = T,
+                              multiple = T)
                  
                  
                  # ,pickerInput(
