@@ -73,12 +73,36 @@ ricerca_modal <- function(lista_regioni, ec = F) {modalDialog(
 )
 }
 
+addCUstomCircleMarker <- function(prx, df){
+  prx %>% 
+  addCircleMarkers(data = df,
+                   label = ~lab %>% lapply(HTML),
+                   lat = ~noised_lat,
+                   lng = ~noised_lng,
+                   group = ~comune,
+                   radius = 5,
+                   stroke = F,
+                   fillOpacity = 1)
+}
+
+
+
+
 shinyServer(function(input, output, session){
   ### Modale per nuoova ricerca
   regioni_attive <- readLines('../data/regioni-attive.txt')
   immo_data <- fread('../data/immo_data_2020-07-16 20:36:25.447691.csv') %>% 
-    filter(regione %in% regioni_attive)
-
+    filter(regione %in% regioni_attive) %>% 
+    mutate(lab = paste(titolo, indirizzo, affitto, sep = ',<br>'))
+  
+  immo_data <- immo_data %>% 
+    mutate(noise_lat = 0, 
+           noise_lng = 0) %>% 
+    mutate(noise_lat = lapply(noise_lat, function(x){return(x + rnorm(1, 0, 0.00007))}) %>% unlist,
+           noise_lng = lapply(noise_lng, function(x){return(x + rnorm(1, 0, 0.00007))}) %>% unlist) %>% 
+    mutate(noised_lat = latitudine + noise_lat, 
+           noised_lng = longitudine + noise_lng)
+  
   mappa_annunci_prx <- leafletProxy('mappa_annunci')
   #variabili per la sessione attuale
   
@@ -152,13 +176,22 @@ shinyServer(function(input, output, session){
     mappa_annunci_prx %>%
       clearMarkers() %>%
       addTiles() %>%
-      setView(lat = mean_lat, lng = mean_lng, zoom = 8) %>% 
-      addCircleMarkers(data = session_variable$annunci_selezionati %>% filter(affitto == session_variable$affitto), 
-                  lat = ~latitudine, 
-                 lng = ~longitudine, 
-                 group = ~comune,
-                 radius = 5, 
-                 stroke = F)
+      setView(lat = mean_lat, lng = mean_lng, zoom = 8)
+    
+    addCUstomCircleMarker(mappa_annunci_prx, 
+                          session_variable$annunci_selezionati %>% 
+                            filter(affitto == session_variable$affitto))
+      # addCircleMarkers(data = session_variable$annunci_selezionati %>% filter(affitto == session_variable$affitto), 
+      #                  label = ~paste(titolo, affitto), 
+      #             lat = ~noised_lat,
+      #            lng = ~noised_lng,
+      #            group = ~comune, 
+      #            radius = 5, 
+      #            stroke = F, 
+      #            #  clusterOptions = markerClusterOptions(removeOutsideVisibleBounds = T), 
+      #            fillOpacity = 1)
+    
+    updateSwitchInput(session, 'ui_affitto_vendita', session_variable$affitto)
     
     removeModal()
   })
@@ -201,15 +234,25 @@ shinyServer(function(input, output, session){
       cat('nuovo comune:', comune_diff, '\n')
       mappa_annunci_prx %>%
         addTiles() %>%
-        setView(lat = mean_lat, lng = mean_lng, zoom = 10) %>% 
-        addCircleMarkers(data = session_variable$annunci_selezionati %>% 
-                           filter(comune == comune_diff, 
-                                  affitto == session_variable$affitto), 
-                         lat = ~latitudine, 
-                         lng = ~longitudine, 
-                         group = ~comune, 
-                         radius = 5, 
-                         stroke = F)
+        setView(lat = mean_lat, lng = mean_lng, zoom = 10)
+      
+      addCUstomCircleMarker(mappa_annunci_prx, 
+                            session_variable$annunci_selezionati %>% 
+                              filter(comune == comune_diff, 
+                                     affitto == session_variable$affitto))
+      
+      
+        # addCircleMarkers(data = session_variable$annunci_selezionati %>% 
+        #                    filter(comune == comune_diff, 
+        #                           affitto == session_variable$affitto), 
+        #                  label = ~paste(titolo, affitto), 
+        #                  lat = ~noised_lat, 
+        #                  lng = ~noised_lng, 
+        #                  group = ~comune, 
+        #                  radius = 5, 
+        #                  stroke = F, 
+        #                  #clusterOptions = markerClusterOptions(removeOutsideVisibleBounds = T),
+        #                  fillOpacity = 1)
     } 
     
     if(length(to_remove)>0){
@@ -234,7 +277,30 @@ shinyServer(function(input, output, session){
   })
   
   
-  
+  observeEvent(input$ui_affitto_vendita, {
+    
+    if(!is.null(session_variable$annunci_selezionati)){
+      
+      session_variable$affitto <- as.integer(input$ui_affitto_vendita)
+      
+      mappa_annunci_prx %>%
+        clearMarkers() 
+      
+      addCUstomCircleMarker(mappa_annunci_prx, 
+                            session_variable$annunci_selezionati %>% 
+                              filter(affitto == session_variable$affitto))
+      
+        # addCircleMarkers(data = session_variable$annunci_selezionati %>% filter(affitto == session_variable$affitto), 
+        #                  label = ~paste(titolo, affitto), 
+        #                  lat = ~noised_lat,
+        #                  lng = ~noised_lng,
+        #                  group = ~comune, 
+        #                  radius = 5, 
+        #                  stroke = F, 
+        #                  #  clusterOptions = markerClusterOptions(removeOutsideVisibleBounds = T), 
+        #                  fillOpacity = 1)
+    }
+  })
   
   
   

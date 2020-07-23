@@ -16,6 +16,13 @@ shinyUI(fluidPage(
                               label = NULL, choices = c('Nessuna selezione'), 
                               selectize = T,
                               multiple = T)
+                 ,switchInput('ui_affitto_vendita', 
+                              onLabel = 'Affitto', 
+                              offLabel = 'Vendita',
+                              offStatus = 'warning',
+                              value = F, 
+                              label = 'Contratto', 
+                              width = '100%')
                  
                  
                  # ,pickerInput(
