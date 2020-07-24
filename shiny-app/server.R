@@ -80,20 +80,29 @@ addCUstomCircleMarker <- function(prx, df){
                    lat = ~noised_lat,
                    lng = ~noised_lng,
                    group = ~comune,
+                   color = ~col,
                    radius = 5,
                    stroke = F,
                    fillOpacity = 1)
 }
 
 
-
+# VENDITA: #f0ad4e
+# AFFITTO: #337ab7
 
 shinyServer(function(input, output, session){
   ### Modale per nuoova ricerca
   regioni_attive <- readLines('../data/regioni-attive.txt')
-  immo_data <- fread('../data/immo_data_2020-07-16 20:36:25.447691.csv') %>% 
+  immo_data <- fread('../data/immo_data_20200723225910.csv') %>% 
     filter(regione %in% regioni_attive) %>% 
-    mutate(lab = paste(titolo, indirizzo, affitto, sep = ',<br>'))
+    mutate(lab = paste(titolo, indirizzo, affitto, sep = ',<br>'), 
+           col = ifelse(affitto == 1, '#337ab7', '#f0ad4e'))
+  
+  ultimo_run <- immo_data %>% 
+    group_by(regione, provincia, comune) %>% 
+    summarise(run = max(data_run)) %>% 
+    mutate(run = substr(run, 1,10))
+  
   
   immo_data <- immo_data %>% 
     mutate(noise_lat = 0, 
@@ -182,7 +191,7 @@ shinyServer(function(input, output, session){
                           session_variable$annunci_selezionati %>% 
                             filter(affitto == session_variable$affitto))
     
-    updateSwitchInput(session, 'ui_affitto_vendita', session_variable$affitto)
+    updateRadioButtons(session, inputId = 'ui_affitto_vendita', selected = session_variable$affitto)
     
     removeModal()
   })
@@ -261,8 +270,5 @@ shinyServer(function(input, output, session){
       
     }
   })
-  
-  
-  
   
 })

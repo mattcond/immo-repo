@@ -8,33 +8,19 @@ shinyUI(fluidPage(
   titlePanel("Immobiliare HDE"),
   
   sidebarLayout(
-    sidebarPanel(width = 2
-                 ,actionButton('nuova_ricerca', 'Nuova ricerca', icon('search'), width = '100%')
+    sidebarPanel(width = 2,
+                 actionButton('nuova_ricerca', 'Nuova ricerca', icon('search'), width = '100%')
                  ,hr()
                  ,h4('Aggiungi un comune')
                  ,selectInput('selezione_singola_comune', 
                               label = NULL, choices = c('Nessuna selezione'), 
                               selectize = T,
                               multiple = T)
-                 ,switchInput('ui_affitto_vendita', 
-                              onLabel = 'Affitto', 
-                              offLabel = 'Vendita',
-                              offStatus = 'warning',
-                              value = F, 
-                              label = 'Contratto', 
-                              width = '100%')
-                 
-                 
-                 # ,pickerInput(
-                 #   inputId = "selezione_singola_comune",
-                 #   label = NULL,
-                 #   choices = c(NA),
-                 #   options = list(
-                 #     'live-search' = TRUE,
-                 #     'title' = "Comune")
-                 # )
-                 #,actionButton('add_comune', 'Aggiungi', icon('plus'), width = '100%')
-                 #,sliderInput('prezzo', 'Prezzo', 0, )
+                 ,radioButtons('ui_affitto_vendita', 
+                               label = 'Contratto', 
+                               choiceNames = c('Affitto', 'Vendita'), 
+                               choiceValues = c(1,0), 
+                               inline = T)
                  ),
     mainPanel(
       h3('Distribuzione territoriale degli immobili'),
