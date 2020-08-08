@@ -20,10 +20,16 @@ export_cnt = 0
 fo = open(export_data_path, 'a')
 
 cur.execute("""
-select a.data_run, a.data_prima_presenza_online , a.data_ultima_presenza_online ,a.affitto, a.regione, a.provincia, a.comune, d.*
-from dettaglio as d
-join annuncio as a
-on d.url_id = a.url_id
+select r.*, t.*
+from(
+	select a.data_run, a.data_prima_presenza_online , a.data_ultima_presenza_online ,a.affitto, d.*
+	from dettaglio as d
+	join annuncio as a
+	on d.url_id = a.url_id
+) as t
+join reversegecodingad as r 
+on t.url_id = r.url_id
+where r.comune != ''
 """)
 
 fo.writelines('"'+'";"'.join([i[0] for i in cur.description])+'"'+'\n')
